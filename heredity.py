@@ -139,7 +139,38 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
-    raise NotImplementedError
+
+    def pass_on_p(parent):
+        if parent in one_gene:
+            return 0.5
+        elif parent in two_genes:
+            return 1.0 - PROBS["mutation"]
+        else:
+            return PROBS["mutation"]
+
+    p = 1.0
+
+    for person in people:
+        gene_num = 1 if person in one_gene else 2 if person in two_genes else 0
+
+        # If `person` has no parents in data
+        if not people[person]["mother"]:
+            p *= PROBS["gene"][gene_num]
+        else:
+            mother_p = pass_on_p(people[person]["mother"])
+            father_p = pass_on_p(people[person]["father"])
+
+            match gene_num:
+                case 1:
+                    p *= (1.0 - mother_p) * father_p + mother_p * (1.0 - father_p)
+                case 2:
+                    p *= mother_p * father_p
+                case 0:
+                    p *= (1.0 - mother_p) * (1.0 - father_p)
+
+        p *= PROBS["trait"][gene_num][person in have_trait]
+
+    return p
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
@@ -149,7 +180,11 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+    for person in probabilities:
+        gene_num = 1 if person in one_gene else 2 if person in two_genes else 0
+
+        probabilities[person]["gene"][gene_num] += p
+        probabilities[person]["trait"][person in have_trait] += p
 
 
 def normalize(probabilities):
@@ -157,7 +192,13 @@ def normalize(probabilities):
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in probabilities:
+        for field in probabilities[person]:
+            p_sum = sum(probabilities[person][field].values())
+
+            probabilities[person][field] = {
+                value: p / p_sum for value, p in probabilities[person][field].items()
+            }
 
 
 if __name__ == "__main__":
